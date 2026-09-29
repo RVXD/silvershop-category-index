@@ -61,12 +61,22 @@ class ProductCategoryIndexExtension extends Extension
             return;
         }
 
-        $wanted = array_values($owner->getCategories()->getIDList());
+        // getCategories() is ProductCategory::get()->byIDs(...); byIDs([]) throws "empty set" in SS6, so
+        // only call it when the product actually has category IDs. Empty => product has no categories.
+        $categoryIds = $owner->getCategoryIDs();
+        $wanted = empty($categoryIds) ? [] : array_values($owner->getCategories()->getIDList());
         $current = array_values($owner->EffectiveCategories()->getIDList());
 
         sort($wanted);
         sort($current);
         if ($wanted === $current) {
+            return;
+        }
+
+        // A product with no categories: clear the relation. setByIDList([]) throws in SS6
+        // ("Cannot filter against an empty set"), so use removeAll() for the empty case.
+        if ($wanted === []) {
+            $owner->EffectiveCategories()->removeAll();
             return;
         }
 
