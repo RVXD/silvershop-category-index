@@ -33,11 +33,15 @@ the index for recursive listings, so the storefront gets the speed-up for free.
 
 ## Maintenance
 
-- **Product write/publish** → that one product's index is rebuilt inline (cheap).
-- **Category move** (`ParentID` change) → every product in the subtree is reindexed, because their ancestor set
-  changed. This runs **inline** here; on a large catalog it can touch thousands of products, so install
+The index reflects the **published (Live) stage**, because the storefront reads Live — draft-only edits don't touch
+it.
+
+- **Product publish** → that product's index is rebuilt from Live (cheap). **Unpublish** → cleared.
+- **Category publish** → the subtree is reindexed from Live (a move changes every descendant's ancestor set). This
+  runs **inline**; on a large catalog it can touch thousands of products, so install
   `symbiote/silverstripe-queuedjobs` and push `CategoryStructureExtension::reindexSubtree()` to a job (see the note
-  in that class). This is the part Werner Krauss's "add if missing in `onAfterWrite`" proposal gets wrong — it never
+  in that class). It currently fires on any category publish and could be narrowed to structural (`ParentID`)
+  changes. This is the part Werner Krauss's "add if missing in `onAfterWrite`" proposal gets wrong — it never
   *removes* stale rows on a move.
 - **Backfill / repair** → `dev/tasks/SilverShop-CategoryIndex-RebuildCategoryIndexTask`.
 

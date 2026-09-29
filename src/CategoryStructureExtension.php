@@ -8,6 +8,7 @@ use SilverShop\Page\ProductCategory;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Extension;
 use SilverStripe\Model\List\SS_List;
+use SilverStripe\Versioned\Versioned;
 
 /**
  * Applied to {@link \SilverShop\Page\ProductCategory}.
@@ -28,35 +29,40 @@ class CategoryStructureExtension extends Extension
      */
     private static bool $optimise_products_showable = true;
 
-    public function onAfterWrite(): void
+    public function onAfterPublish($original = null): void
     {
+        // Publishing a category can change the published tree (a move changes every descendant product's
+        // ancestor set), so reindex the subtree from Live.
         $owner = $this->getOwner();
-
-        // A move (new parent) changes the ancestor set of every product in the subtree -> reindex them.
-        if ($owner->isInDB() && $owner->isChanged('ParentID')) {
+        if ($owner->isInDB()) {
             self::reindexSubtree($owner);
         }
     }
 
     /**
-     * Reindex every product in this category and all descendant categories.
+     * Reindex every Live product in this category and all descendant categories.
      *
-     * NOTE: a large subtree can touch thousands of products — too slow to do in a web request. With
-     * symbiote/silverstripe-queuedjobs installed, push this to a QueuedJob; here it runs inline, which is
-     * fine for dev and small catalogs. See README.
+     * NOTE: (1) a large subtree can touch thousands of products — too slow for a web request; with
+     * symbiote/silverstripe-queuedjobs installed, push this to a QueuedJob (here it runs inline, fine for dev
+     * and small catalogs). (2) This currently fires on any category publish; it could be narrowed to structural
+     * (ParentID) changes. See README.
      */
     public static function reindexSubtree(ProductCategory $category): void
     {
-        $categoryIds = array_merge([$category->ID], $category->AllChildCategoryIDs());
+        Versioned::withVersionedMode(function () use ($category): void {
+            Versioned::set_stage(Versioned::LIVE);
 
-        $products = Product::get()->filterAny([
-            'ParentID' => $categoryIds,
-            'ProductCategories.ID' => $categoryIds,
-        ]);
+            $categoryIds = array_merge([$category->ID], $category->AllChildCategoryIDs());
 
-        foreach ($products as $product) {
-            $product->rebuildCategoryIndex();
-        }
+            $products = Product::get()->filterAny([
+                'ParentID' => $categoryIds,
+                'ProductCategories.ID' => $categoryIds,
+            ]);
+
+            foreach ($products as $product) {
+                $product->rebuildCategoryIndex();
+            }
+        });
     }
 
     /**

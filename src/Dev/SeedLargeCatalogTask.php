@@ -56,6 +56,7 @@ class SeedLargeCatalogTask extends BuildTask
             $product->ParentID = $leafIds[($n - 1) % count($leafIds)];
             $product->BasePrice = 9.99;
             $product->write();
+            $product->publishSingle();
             $new[] = $product;
         }
 
@@ -99,6 +100,7 @@ class SeedLargeCatalogTask extends BuildTask
         $category->URLSegment = $segment;
         $category->ParentID = $parentId;
         $category->write();
+        $category->publishSingle();
 
         return $category;
     }

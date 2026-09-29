@@ -5,19 +5,18 @@ namespace SilverShop\CategoryIndex;
 use SilverShop\Page\Product;
 use SilverShop\Page\ProductCategory;
 use SilverStripe\Core\Extension;
+use SilverStripe\Versioned\Versioned;
 
 /**
  * Applied to {@link \SilverShop\Page\Product}.
  *
  * Maintains a derived, read-only flat many_many "EffectiveCategories" holding every category a product
  * effectively belongs to: its primary (tree ParentID) category, all ancestor categories, and its explicit
- * secondary ProductCategories. This is the queryable/indexable relation the editable ProductCategories isn't —
- * a single JOIN answers "all products in category X (including descendants)" without the ParentID-OR-many_many
- * filter and the per-level child-category walk.
+ * secondary ProductCategories. A single JOIN then answers "all products in category X (including descendants)".
  *
- * The relation is rebuilt from ProductCategories + tree ancestors on every product write/publish; it is NOT
- * user-editable. Rebuild the whole set with
- * dev/tasks/SilverShop-CategoryIndex-RebuildCategoryIndexTask.
+ * The index reflects the **published (Live) stage**, because the storefront reads Live — so it is (re)built on
+ * publish and cleared on unpublish. Draft-only edits do not touch it. It is NOT user-editable. Rebuild the whole
+ * set with dev/tasks/SilverShop-CategoryIndex-RebuildCategoryIndexTask.
  *
  * @property Product $owner
  */
@@ -29,17 +28,9 @@ class ProductCategoryIndexExtension extends Extension
 
     /**
      * Set true around a bulk import/seed to skip the per-write reindex, then rebuild once
-     * (RebuildCategoryIndexTask). Avoids O(n) index churn while writing many products.
+     * (RebuildCategoryIndexTask). Avoids O(n) index churn while publishing many products.
      */
     public static bool $disable_auto_reindex = false;
-
-    public function onAfterWrite(): void
-    {
-        if (self::$disable_auto_reindex) {
-            return;
-        }
-        $this->rebuildCategoryIndex();
-    }
 
     public function onAfterPublish($original = null): void
     {
@@ -49,10 +40,17 @@ class ProductCategoryIndexExtension extends Extension
         $this->rebuildCategoryIndex();
     }
 
+    public function onAfterUnpublish(): void
+    {
+        if (self::$disable_auto_reindex) {
+            return;
+        }
+        // The Live version is gone, so rebuildCategoryIndex() will clear the relation.
+        $this->rebuildCategoryIndex();
+    }
+
     /**
-     * Recompute this single product's effective-category set. Cheap — safe to run inline on write.
-     * getCategories() already returns the effective set (ancestors + secondary, real categories only),
-     * so we simply mirror it into the flat relation, skipping the write when nothing changed.
+     * Recompute this product's effective-category set from the Live stage. Cheap — safe to run on publish.
      */
     public function rebuildCategoryIndex(): void
     {
@@ -61,11 +59,8 @@ class ProductCategoryIndexExtension extends Extension
             return;
         }
 
-        // getCategories() is ProductCategory::get()->byIDs(...); byIDs([]) throws "empty set" in SS6, so
-        // only call it when the product actually has category IDs. Empty => product has no categories.
-        $categoryIds = $owner->getCategoryIDs();
-        $wanted = empty($categoryIds) ? [] : array_values($owner->getCategories()->getIDList());
-        $current = array_values($owner->EffectiveCategories()->getIDList());
+        $wanted = $this->liveCategoryIdsFor((int) $owner->ID);
+        $current = array_map('intval', array_values($owner->EffectiveCategories()->getIDList()));
 
         sort($wanted);
         sort($current);
@@ -73,13 +68,37 @@ class ProductCategoryIndexExtension extends Extension
             return;
         }
 
-        // A product with no categories: clear the relation. setByIDList([]) throws in SS6
-        // ("Cannot filter against an empty set"), so use removeAll() for the empty case.
         if ($wanted === []) {
             $owner->EffectiveCategories()->removeAll();
             return;
         }
 
         $owner->EffectiveCategories()->setByIDList($wanted);
+    }
+
+    /**
+     * Effective category IDs for a product as published (Live). Empty when the product is not on Live.
+     * Reads in an isolated Live reading mode so it is correct regardless of the caller's current stage.
+     * getCategories() is ProductCategory::get()->byIDs(...); byIDs([]) throws "empty set" in SS6, so it is
+     * only called when there are category IDs.
+     *
+     * @return int[]
+     */
+    private function liveCategoryIdsFor(int $productId): array
+    {
+        return Versioned::withVersionedMode(function () use ($productId): array {
+            Versioned::set_stage(Versioned::LIVE);
+
+            $live = Product::get()->byID($productId);
+            if (!$live) {
+                return [];
+            }
+
+            $categoryIds = $live->getCategoryIDs();
+
+            return empty($categoryIds)
+                ? []
+                : array_map('intval', array_values($live->getCategories()->getIDList()));
+        });
     }
 }
