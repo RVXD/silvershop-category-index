@@ -60,14 +60,30 @@ class CategoryStructureExtension extends Extension
     }
 
     /**
-     * Replace the product list with a single indexed lookup on the flat relation. The index already contains
-     * ancestor rows, so filtering on this category's own ID returns it plus every descendant — no ParentID/
-     * many_many OR and no AllChildCategoryIDs() tree walk.
+     * Early hook (silvershop/core with the overrideProductsShowable hook): supply the whole list up front so
+     * core skips the AllChildCategoryIDs() tree walk and the ParentID/ProductCategories query entirely. This is
+     * where the real speed-up comes from — a single indexed lookup, no walk. Only applies to recursive listings
+     * (the index bakes in descendants via ancestor rows); non-recursive calls fall through to core.
+     */
+    public function overrideProductsShowable(&$override, $recursive): void
+    {
+        if (!Config::inst()->get(self::class, 'optimise_products_showable')) {
+            return;
+        }
+        if (empty($recursive) || !ProductCategory::config()->get('include_child_groups')) {
+            return;
+        }
+
+        $override = $this->indexedProducts();
+    }
+
+    /**
+     * Fallback for a core WITHOUT the overrideProductsShowable hook: swap the already-built list for the indexed
+     * one. Correct, but runs after the tree walk so it does not save that cost. No-op once
+     * overrideProductsShowable has already short-circuited.
      */
     public function updateProductsShowable(SS_List &$products): void
     {
-        $owner = $this->getOwner();
-
         if (!Config::inst()->get(self::class, 'optimise_products_showable')) {
             return;
         }
@@ -75,20 +91,28 @@ class CategoryStructureExtension extends Extension
             return;
         }
 
-        $optimised = Product::get()->filter(['EffectiveCategories.ID' => $owner->ID]);
+        $products = $this->indexedProducts();
+    }
 
-        // Preserve core's must_have_price behaviour.
+    /**
+     * The single-JOIN indexed product list for this category (incl. descendants), preserving core's
+     * must_have_price behaviour.
+     */
+    private function indexedProducts(): SS_List
+    {
+        $products = Product::get()->filter(['EffectiveCategories.ID' => $this->getOwner()->ID]);
+
         if (ProductCategory::config()->get('must_have_price')) {
             if (Product::has_extension(ProductVariationsExtension::class)) {
-                $optimised = $optimised->filterAny([
+                $products = $products->filterAny([
                     'BasePrice:GreaterThan' => 0,
                     'Variations.Price:GreaterThan' => 0,
                 ]);
             } else {
-                $optimised = $optimised->filter(['BasePrice:GreaterThan' => 0]);
+                $products = $products->filter(['BasePrice:GreaterThan' => 0]);
             }
         }
 
-        $products = $optimised;
+        return $products;
     }
 }

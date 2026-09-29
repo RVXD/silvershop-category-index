@@ -60,7 +60,7 @@ class BenchmarkCategoryIndexTask extends BuildTask
             ($oldCount === $newCount && $newCount === $directCount) ? 'YES' : 'NO'
         ));
         $output->writeln(sprintf('OLD    core ProductsShowable (OR + tree walk) : %6.2f ms/run', $oldMs));
-        $output->writeln(sprintf('NEW    ProductsShowable via index swap        : %6.2f ms/run', $newMs));
+        $output->writeln(sprintf('NEW    ProductsShowable via override hook     : %6.2f ms/run', $newMs));
         $output->writeln(sprintf('DIRECT index filter (no tree walk)            : %6.2f ms/run', $directMs));
         if ($newMs > 0) {
             $output->writeln(sprintf('Speedup  new vs old: %.2fx   direct vs old: %.2fx', $oldMs / $newMs, $oldMs / max($directMs, 0.0001)));
