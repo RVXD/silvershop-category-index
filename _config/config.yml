@@ -1,0 +1,10 @@
+---
+Name: silvershop-category-index
+---
+SilverShop\Page\Product:
+  extensions:
+    - SilverShop\CategoryIndex\ProductCategoryIndexExtension
+
+SilverShop\Page\ProductCategory:
+  extensions:
+    - SilverShop\CategoryIndex\CategoryStructureExtension
