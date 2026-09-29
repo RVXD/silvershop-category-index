@@ -5,6 +5,7 @@ namespace SilverShop\CategoryIndex;
 use SilverShop\Page\Product;
 use SilverShop\Page\ProductCategory;
 use SilverStripe\Core\Extension;
+use SilverStripe\Forms\FieldList;
 use SilverStripe\Versioned\Versioned;
 
 /**
@@ -31,6 +32,15 @@ class ProductCategoryIndexExtension extends Extension
      * (RebuildCategoryIndexTask). Avoids O(n) index churn while publishing many products.
      */
     public static bool $disable_auto_reindex = false;
+
+    /**
+     * The effective-category index is derived and rebuilt automatically on publish — it must never be edited by
+     * hand, so keep its auto-scaffolded relation field out of the CMS.
+     */
+    public function updateCMSFields(FieldList $fields): void
+    {
+        $fields->removeByName('EffectiveCategories');
+    }
 
     public function onAfterPublish($original = null): void
     {
