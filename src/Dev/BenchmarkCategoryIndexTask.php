@@ -39,32 +39,30 @@ class BenchmarkCategoryIndexTask extends BuildTask
             return Command::FAILURE;
         }
 
+        // Realistic storefront pattern: one paginated page (LIMIT) + the total count for the pager.
         Config::modify()->set(CategoryStructureExtension::class, 'optimise_products_showable', false);
         $oldCount = $root->ProductsShowable()->count();
-        $oldMs = $this->time(fn() => $root->ProductsShowable()->column('ID'));
+        $oldPageMs = $this->time(fn() => $root->ProductsShowable()->limit(12)->column('ID'));
+        $oldCountMs = $this->time(fn() => $root->ProductsShowable()->count());
+        $oldFullMs = $this->time(fn() => $root->ProductsShowable()->column('ID'));
 
         Config::modify()->set(CategoryStructureExtension::class, 'optimise_products_showable', true);
         $newCount = $root->ProductsShowable()->count();
-        $newMs = $this->time(fn() => $root->ProductsShowable()->column('ID'));
-
-        $rootId = $root->ID;
-        $directCount = Product::get()->filter(['EffectiveCategories.ID' => $rootId])->count();
-        $directMs = $this->time(fn() => Product::get()->filter(['EffectiveCategories.ID' => $rootId])->column('ID'));
+        $newPageMs = $this->time(fn() => $root->ProductsShowable()->limit(12)->column('ID'));
+        $newCountMs = $this->time(fn() => $root->ProductsShowable()->count());
+        $newFullMs = $this->time(fn() => $root->ProductsShowable()->column('ID'));
 
         $output->writeln(sprintf(
-            "Recursive products under '%s': old=%d new=%d direct=%d (match: %s)",
+            "Recursive products under '%s': old=%d new=%d (match: %s)",
             $root->Title,
             $oldCount,
             $newCount,
-            $directCount,
-            ($oldCount === $newCount && $newCount === $directCount) ? 'YES' : 'NO'
+            $oldCount === $newCount ? 'YES' : 'NO'
         ));
-        $output->writeln(sprintf('OLD    core ProductsShowable (OR + tree walk) : %6.2f ms/run', $oldMs));
-        $output->writeln(sprintf('NEW    ProductsShowable via override hook     : %6.2f ms/run', $newMs));
-        $output->writeln(sprintf('DIRECT index filter (no tree walk)            : %6.2f ms/run', $directMs));
-        if ($newMs > 0) {
-            $output->writeln(sprintf('Speedup  new vs old: %.2fx   direct vs old: %.2fx', $oldMs / $newMs, $oldMs / max($directMs, 0.0001)));
-        }
+        $output->writeln('                                    OLD (core)   NEW (index override)');
+        $output->writeln(sprintf('  page of 12 (paginated fetch)   : %8.2f ms   %8.2f ms   (%.2fx)', $oldPageMs, $newPageMs, $oldPageMs / max($newPageMs, 0.0001)));
+        $output->writeln(sprintf('  count() (pager total)          : %8.2f ms   %8.2f ms   (%.2fx)', $oldCountMs, $newCountMs, $oldCountMs / max($newCountMs, 0.0001)));
+        $output->writeln(sprintf('  full list (all %-4d rows)      : %8.2f ms   %8.2f ms   (%.2fx)', $oldCount, $oldFullMs, $newFullMs, $oldFullMs / max($newFullMs, 0.0001)));
 
         return Command::SUCCESS;
     }
