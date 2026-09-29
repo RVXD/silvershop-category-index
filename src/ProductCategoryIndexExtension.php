@@ -27,13 +27,25 @@ class ProductCategoryIndexExtension extends Extension
         'EffectiveCategories' => ProductCategory::class,
     ];
 
+    /**
+     * Set true around a bulk import/seed to skip the per-write reindex, then rebuild once
+     * (RebuildCategoryIndexTask). Avoids O(n) index churn while writing many products.
+     */
+    public static bool $disable_auto_reindex = false;
+
     public function onAfterWrite(): void
     {
+        if (self::$disable_auto_reindex) {
+            return;
+        }
         $this->rebuildCategoryIndex();
     }
 
     public function onAfterPublish($original = null): void
     {
+        if (self::$disable_auto_reindex) {
+            return;
+        }
         $this->rebuildCategoryIndex();
     }
 
