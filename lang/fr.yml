@@ -1,0 +1,9 @@
+fr:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Ventes par catégorie'
+    DESC: 'Chiffre d''affaires et unités vendues par catégorie (y compris les catégories descendantes) sur une période. Les totaux par catégorie incluent toute leur arborescence, donc les lignes se chevauchent.'
+    Start: 'À partir du (date de paiement)'
+    End: 'Jusqu''au (date de paiement)'
+    ColCategory: 'Catégorie'
+    ColUnits: 'Unités vendues'
+    ColRevenue: 'Chiffre d''affaires'

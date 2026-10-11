@@ -1,0 +1,9 @@
+en:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Sales by category'
+    DESC: 'Revenue and units sold per category (including descendant categories) for a period. Category totals include their subtree, so rows overlap.'
+    Start: 'From (paid date)'
+    End: 'To (paid date)'
+    ColCategory: 'Category'
+    ColUnits: 'Units sold'
+    ColRevenue: 'Revenue'

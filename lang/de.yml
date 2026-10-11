@@ -1,0 +1,9 @@
+de:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Umsatz nach Kategorie'
+    DESC: 'Umsatz und verkaufte Einheiten pro Kategorie (einschließlich untergeordneter Kategorien) für einen Zeitraum. Kategoriesummen enthalten den gesamten Unterbaum, daher überschneiden sich die Zeilen.'
+    Start: 'Von (Zahlungsdatum)'
+    End: 'Bis (Zahlungsdatum)'
+    ColCategory: 'Kategorie'
+    ColUnits: 'Verkaufte Einheiten'
+    ColRevenue: 'Umsatz'

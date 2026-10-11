@@ -1,0 +1,9 @@
+it:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Vendite per categoria'
+    DESC: 'Ricavi e unità vendute per categoria (incluse le categorie discendenti) in un periodo. I totali di categoria includono l''intero sottoalbero, quindi le righe si sovrappongono.'
+    Start: 'Dal (data di pagamento)'
+    End: 'Al (data di pagamento)'
+    ColCategory: 'Categoria'
+    ColUnits: 'Unità vendute'
+    ColRevenue: 'Ricavi'

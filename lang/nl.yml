@@ -1,0 +1,9 @@
+nl:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Verkoop per categorie'
+    DESC: 'Omzet en verkochte aantallen per categorie (inclusief onderliggende categorieën) over een periode. Categorietotalen omvatten de hele substructuur, dus rijen overlappen.'
+    Start: 'Vanaf (betaaldatum)'
+    End: 'Tot en met (betaaldatum)'
+    ColCategory: 'Categorie'
+    ColUnits: 'Verkochte aantallen'
+    ColRevenue: 'Omzet'

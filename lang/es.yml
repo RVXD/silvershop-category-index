@@ -1,0 +1,9 @@
+es:
+  SilverShop\CategoryIndex\SalesByCategoryReport:
+    TITLE: 'Ventas por categoría'
+    DESC: 'Ingresos y unidades vendidas por categoría (incluidas las categorías descendientes) durante un periodo. Los totales por categoría incluyen todo su subárbol, por lo que las filas se solapan.'
+    Start: 'Desde (fecha de pago)'
+    End: 'Hasta (fecha de pago)'
+    ColCategory: 'Categoría'
+    ColUnits: 'Unidades vendidas'
+    ColRevenue: 'Ingresos'
